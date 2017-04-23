@@ -136,10 +136,11 @@ sw4503.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,2] }, function (err, varbinds) {
  		}
  	}
  }
- 	firebase.database().ref('/sw4503').push(standard)
+ 	firebase.database().ref('/SW4503').push(standard)
     sw4503.close()
 })
 }//******************************function*******************************
+
 getR124 ()
 function getR124 () {
 // os
@@ -253,11 +254,128 @@ r124.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,2] }, function (err, varbinds) {
  		}
  	}
  }
- 	firebase.database().ref('/r124').push(standard)
+ 	firebase.database().ref('/R124').push(standard)
     r124.close()
 })
 }//******************************function*******************************
 
+getR330A ()
+function getR330A () {
+// os
+let standard = {}
+let r330a = new snmp.Session({ host: '10.77.3.2', community: 'public' })
+r330a.get({ oid: [1,3,6,1,2,1,1,1,0] }, function (err, varbinds) {
+	standard = {
+		date: moment().format("L") +" "+ moment().format("LT"),
+		switch: 'R330A',
+		os: varbinds[0].value
+	}
+})
+//Uptime
+r330a.get({ oid: [1,3,6,1,2,1,1,3,0] }, function (err, varbinds) {
+/*	console.log(typeof varbinds[0].value.toString())*/
+	let timetick = varbinds[0].value
+	let min = parseInt(timetick / 6000)
+	let hour = parseInt(timetick / 360000)
+	standard.uptime = hour.toString() + " hours " + min.toString() + " min "
+})
+//CPU
+r330a.get({ oid: [1,3,6,1,4,1,9,9,109,1,1,1,1,5,1] }, function (err, varbinds) {
+	standard.cpu = varbinds[0].value
+})
+//memory
+r330a.get({ oid: [1,3,6,1,4,1,9,9,48,1,1,1,5,1] }, function (err, varbinds) {
+	//console.log('mem',varbinds[0].value)
+	console.log(bytesToSize(varbinds[0].value))
+	standard.mem = bytesToSize(varbinds[0].value)
+})
+//temp
+r330a.getSubtree({ oid: [1,3,6,1,4,1,9,9,13,1,3,1,3] }, function (err, varbinds) {
+	//console.log('temp',varbinds[0].value)
+	standard.temp = varbinds[0].value
+
+})
+
+//inbound 
+var inbound = []
+
+r330a.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,10] }, function (err, varbinds) {
+	// console.log('inbound',varbinds)
+	for (index in varbinds) {
+		let data = {
+			indexOID: varbinds[index].oid[10],
+			inbound: parseInt(varbinds[index].value/1048576)
+		}
+		inbound.push(data)
+	}
+	standard.inbound = inbound
+})
+//outbound 
+var outbound = []
+r330a.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,16] }, function (err, varbinds) {
+	//console.log('outbound',varbinds)
+	for (index in varbinds) {
+		let data = {
+			indexOID: varbinds[index].oid[10],
+			outbound: parseInt(varbinds[index].value/1048576)
+		}
+		outbound.push(data)
+	}
+	standard.outbound = outbound
+
+})
+
+//status
+var status = []
+r330a.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,8] }, function (err, varbinds) {
+	//console.log('status',varbinds[0].value)
+	for (index in varbinds) {
+		if(varbinds[index].value == 1){	
+    		status.push('Up') 
+		}
+		else if (varbinds[index].value == 2) {
+			status.push('Down')
+		}
+	}
+	//standard.status = status
+
+})
+//name interface 
+var interface = []
+r330a.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,2] }, function (err, varbinds) {
+    for (index in varbinds) {
+    	interface.push(varbinds[index].value)
+	}
+    standard.interface = []
+    for (index in interface) {
+    	let data = {
+    		interface: interface[index],
+    		status: status[index],
+    		indexOID: varbinds[index].oid[10]
+    	}
+    	standard.interface.push(data)
+    }
+
+
+ standard.total = []
+ for (i in standard.interface) {
+ 	for (x in standard.inbound) {
+ 		if (standard.interface[i].indexOID === standard.inbound[x].indexOID) {
+ 			console.log(standard.interface[i], standard.interface[i].indexOID)
+ 			let item = {
+ 				interface: standard.interface[i].interface,
+ 				status: standard.interface[i].status,
+ 				inbound: standard.inbound[x].inbound,
+ 				outbound: standard.outbound[x].outbound
+ 			}
+ 			standard.total.push(item)
+ 		}
+ 	}
+ }
+ 	firebase.database().ref('/R330A').push(standard)
+    r330a.close()
+})
+}//******************************function*******************************
 
 
 function bytesToSize(bytes) {
