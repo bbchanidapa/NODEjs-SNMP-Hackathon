@@ -4,6 +4,17 @@ var app = express()
 var cors = require('cors')
 var snmp = require('snmp-native')
 var moment = require('moment')
+var firebase = require('firebase')
+// setup firebase 
+var config = {
+    apiKey: "AIzaSyAbS66YpT_M3IHtIRDZFa-aH-u8JRQ_HUc",
+    authDomain: "snmp-1521f.firebaseapp.com",
+    databaseURL: "https://snmp-1521f.firebaseio.com",
+    projectId: "snmp-1521f",
+    storageBucket: "snmp-1521f.appspot.com",
+    messagingSenderId: "815548380666"
+  }
+  firebase.initializeApp(config)
 app.use(cors())
 app.use(bodyParser.json())
 
@@ -123,6 +134,7 @@ sw4503.getSubtree({ oid: [1,3,6,1,2,1,2,2,1,2] }, function (err, varbinds) {
  		}
  	}
  }
+ 	firebase.database().ref('/sw4503').push(standard)
     sw4503.close()
 })
 
